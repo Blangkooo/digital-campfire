@@ -1,5 +1,6 @@
 {
-  "outputDirectory": "public",
+  "framework": null,
+  "buildCommand": "",
   "crons": [
     {
       "path": "/api/cron/daily",
