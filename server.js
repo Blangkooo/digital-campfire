@@ -4,32 +4,33 @@ const express  = require('express');
 const cron     = require('node-cron');
 const cors     = require('cors');
 const path     = require('path');
-const fs       = require('fs');
 const crypto   = require('crypto');
+const { Pool } = require('pg');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
 
-// ─── JSON file store ──────────────────────────────────────────────────────────
-const DB_PATH    = path.join(__dirname, 'data.json');
-const DAILY_PATH = path.join(__dirname, 'daily.json');
+// ─── Database (Render PostgreSQL via DATABASE_URL env var) ────────────────────
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+});
 
-function readDB() {
-  try { return JSON.parse(fs.readFileSync(DB_PATH, 'utf8')); }
-  catch { return []; }
-}
+async function initDB() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS messages (
+      id          TEXT    PRIMARY KEY,
+      text        TEXT    NOT NULL,
+      category    TEXT    NOT NULL,
+      alias       TEXT    NOT NULL,
+      created_at  BIGINT  NOT NULL,
+      is_auto     BOOLEAN NOT NULL DEFAULT FALSE
+    );
 
-function writeDB(messages) {
-  fs.writeFileSync(DB_PATH, JSON.stringify(messages, null, 2), 'utf8');
-}
-
-function readDaily() {
-  try { return JSON.parse(fs.readFileSync(DAILY_PATH, 'utf8')); }
-  catch { return []; }
-}
-
-function writeDaily(dates) {
-  fs.writeFileSync(DAILY_PATH, JSON.stringify(dates), 'utf8');
+    CREATE TABLE IF NOT EXISTS daily_log (
+      date TEXT PRIMARY KEY
+    );
+  `);
 }
 
 // ─── Campfire alias generator ─────────────────────────────────────────────────
@@ -49,7 +50,7 @@ function randomAlias() {
   return `${word}${num}`;
 }
 
-// ─── Auto-message pool ────────────────────────────────────────────────────────
+// ─── Auto-message pool (60 messages across all categories) ───────────────────
 const AUTO_POOL = [
   // ADVICE
   { text: "The kindest thing you can do for yourself is stop apologizing for things that were never your fault.",              category: "Advice" },
@@ -62,7 +63,6 @@ const AUTO_POOL = [
   { text: "The right people will still be there after you say no. Keep that in mind.",                                         category: "Advice" },
   { text: "Forgive yourself for who you were when you were surviving. That person kept you alive.",                            category: "Advice" },
   { text: "Your future self is watching. Do something today that they'll be quietly proud of.",                                category: "Advice" },
-
   // CONFESSION
   { text: "I still keep every birthday card I've ever received in a shoebox under my bed. I reread them when I feel invisible.", category: "Confession" },
   { text: "I drove past my childhood home last summer and sat outside for forty minutes. I never got out of the car.",           category: "Confession" },
@@ -72,7 +72,6 @@ const AUTO_POOL = [
   { text: "I've rehearsed hard conversations in the mirror for years. I still freeze when the moment actually comes.",           category: "Confession" },
   { text: "I miss someone I'm not allowed to miss anymore. I don't know what to do with that.",                                  category: "Confession" },
   { text: "I've been writing a letter to my younger self for three years. I still can't finish it.",                             category: "Confession" },
-
   // DREAM
   { text: "I want to spend a whole winter in a cabin with nothing but books, a fire, and no wifi. No apologies for it.",       category: "Dream" },
   { text: "My dream is to open a small library café where the coffee is cheap and you can stay all day.",                      category: "Dream" },
@@ -82,7 +81,6 @@ const AUTO_POOL = [
   { text: "My dream is to live somewhere where I can hear crickets at night and wake up to birds. Nothing else.",              category: "Dream" },
   { text: "I want to write a book that one stranger reads on a rainy afternoon and feels less alone.",                         category: "Dream" },
   { text: "I dream of a life where I can say 'I don't know' without it feeling like failure.",                                 category: "Dream" },
-
   // MEMORY
   { text: "My grandmother's kitchen smelled like cardamom and burnt sugar. Twenty years later and it still undoes me.",             category: "Memory" },
   { text: "The summer I turned sixteen, my best friend and I slept on his roof and named every star badly.",                        category: "Memory" },
@@ -92,7 +90,6 @@ const AUTO_POOL = [
   { text: "I was nine when I read my first real book — stayed up until 3am thinking: so this is what it feels like to disappear somewhere good.", category: "Memory" },
   { text: "We had one summer with no plans and no money and it turned out to be the best one we ever had.",                         category: "Memory" },
   { text: "I still have the voicemail I can't bring myself to delete. Just knowing it's there is enough.",                          category: "Memory" },
-
   // STORY
   { text: "I got lost in a foreign city for six hours and found a bookshop, a stray cat, and a meal I'll spend the rest of my life trying to recreate.", category: "Story" },
   { text: "I quit my job on a Tuesday, started painting on Wednesday, and sold my first piece by Sunday. Terrifying. Worth it.",   category: "Story" },
@@ -102,7 +99,6 @@ const AUTO_POOL = [
   { text: "I failed the exam, lost the apartment, and missed the flight all in one week. It was the beginning of the best chapter of my life.", category: "Story" },
   { text: "My neighbor is 84 and teaches me chess on Thursdays. She always wins. I think that is the lesson.",                    category: "Story" },
   { text: "I planted a garden during the worst year of my life. Something small and alive needed me to keep going.",               category: "Story" },
-
   // GRATITUDE
   { text: "Grateful for the friend who texts 'you okay?' at exactly the right moment, every time.",                             category: "Gratitude" },
   { text: "I'm grateful for rain on windows — the sound it makes, the permission it gives you to stay inside.",                 category: "Gratitude" },
@@ -112,7 +108,6 @@ const AUTO_POOL = [
   { text: "I'm grateful for Sunday mornings with nothing scheduled and nowhere to be.",                                          category: "Gratitude" },
   { text: "Grateful for the one teacher who looked at me and saw something I couldn't see in myself yet.",                       category: "Gratitude" },
   { text: "I'm grateful for the long way home — for choosing the scenic route when I didn't have to.",                          category: "Gratitude" },
-
   // RANDOM THOUGHT
   { text: "Airports are the most honest places. Everyone is going somewhere and no one is pretending not to feel it.",           category: "Random Thought" },
   { text: "Old libraries smell like every thought someone ever had that was worth keeping.",                                     category: "Random Thought" },
@@ -126,7 +121,6 @@ const AUTO_POOL = [
   { text: "Every song was written by someone who needed to say something they couldn't say out loud.",                          category: "Random Thought" },
 ];
 
-// ─── Seeds for first run ──────────────────────────────────────────────────────
 const SEEDS = [
   { text: "My grandmother used to say every sunset is a reminder that endings can be beautiful. I didn't understand until the year she left.", category: "Memory" },
   { text: "Advice from forty years of living: let people be wrong about you. Your peace is worth more than their accuracy.",                   category: "Advice" },
@@ -137,50 +131,43 @@ const SEEDS = [
   { text: "Clouds are just the sky's way of practicing shapes it never commits to. I respect that.",                                          category: "Random Thought" },
 ];
 
-// ─── Daily injection ──────────────────────────────────────────────────────────
-function injectDailyMessages() {
-  const today    = new Date().toISOString().slice(0, 10);
-  const injected = readDaily();
-  if (injected.includes(today)) return;
-
-  const messages   = readDB();
-  const usedTexts  = new Set(messages.filter(m => m.is_auto).map(m => m.text));
-  const available  = AUTO_POOL.filter(m => !usedTexts.has(m.text));
-  const picks      = available.sort(() => Math.random() - 0.5).slice(0, 3);
-  const now        = Date.now();
-
-  for (const pick of picks) {
-    messages.unshift({
-      id:         'auto-' + crypto.randomUUID(),
-      text:       pick.text,
-      category:   pick.category,
-      alias:      randomAlias(),
-      created_at: now,
-      is_auto:    true,
-    });
-  }
-
-  writeDB(messages);
-  injected.push(today);
-  writeDaily(injected);
-  console.log(`[${today}] Injected ${picks.length} daily messages.`);
-}
-
-function seedIfEmpty() {
-  const messages = readDB();
-  if (messages.length > 0) return;
+// ─── Seed on first run ────────────────────────────────────────────────────────
+async function seedIfEmpty() {
+  const { rows } = await pool.query('SELECT COUNT(*) AS n FROM messages');
+  if (parseInt(rows[0].n) > 0) return;
 
   const now = Date.now();
-  const seeded = SEEDS.map((s, i) => ({
-    id:         'seed-' + crypto.randomUUID(),
-    text:       s.text,
-    category:   s.category,
-    alias:      randomAlias(),
-    created_at: now - (SEEDS.length - i) * 86400000 * 0.7,
-    is_auto:    true,
-  }));
-  writeDB(seeded);
+  for (let i = 0; i < SEEDS.length; i++) {
+    const s = SEEDS[i];
+    await pool.query(
+      'INSERT INTO messages (id, text, category, alias, created_at, is_auto) VALUES ($1,$2,$3,$4,$5,$6)',
+      ['seed-' + crypto.randomUUID(), s.text, s.category, randomAlias(), now - (SEEDS.length - i) * 60000000, true]
+    );
+  }
   console.log('Seeded initial messages.');
+}
+
+// ─── Daily injection ──────────────────────────────────────────────────────────
+async function injectDailyMessages() {
+  const today = new Date().toISOString().slice(0, 10);
+  const { rows: logged } = await pool.query('SELECT date FROM daily_log WHERE date = $1', [today]);
+  if (logged.length > 0) return;
+
+  const { rows: used } = await pool.query('SELECT text FROM messages WHERE is_auto = TRUE');
+  const usedTexts = new Set(used.map(r => r.text));
+  const available = AUTO_POOL.filter(m => !usedTexts.has(m.text));
+  const picks     = available.sort(() => Math.random() - 0.5).slice(0, 3);
+  const now       = Date.now();
+
+  for (const pick of picks) {
+    await pool.query(
+      'INSERT INTO messages (id, text, category, alias, created_at, is_auto) VALUES ($1,$2,$3,$4,$5,$6)',
+      ['auto-' + crypto.randomUUID(), pick.text, pick.category, randomAlias(), now, true]
+    );
+  }
+
+  await pool.query('INSERT INTO daily_log (date) VALUES ($1) ON CONFLICT DO NOTHING', [today]);
+  console.log(`[${today}] Injected ${picks.length} daily messages.`);
 }
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
@@ -189,15 +176,19 @@ app.use(express.json({ limit: '20kb' }));
 app.use(express.static(path.join(__dirname)));
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
-app.get('/api/messages', (_req, res) => {
-  // Return only the anonymized fields — never expose anything beyond alias
-  const rows = readDB().map(({ id, text, category, alias, created_at, is_auto }) =>
-    ({ id, text, category, alias, created_at, is_auto })
-  );
-  res.json(rows);
+app.get('/api/messages', async (_req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT id, text, category, alias, created_at, is_auto FROM messages ORDER BY created_at DESC'
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error.' });
+  }
 });
 
-app.post('/api/messages', (req, res) => {
+app.post('/api/messages', async (req, res) => {
   const { text, category } = req.body;
 
   if (!text || typeof text !== 'string' || text.trim().length === 0)
@@ -207,30 +198,34 @@ app.post('/api/messages', (req, res) => {
   if (!VALID.includes(category))
     return res.status(400).json({ error: 'Invalid category.' });
 
-  const message = {
-    id:         'msg-' + crypto.randomUUID(),
-    text:       text.trim().slice(0, 500),
-    category,
-    alias:      randomAlias(),
-    created_at: Date.now(),
-    is_auto:    false,
-  };
+  try {
+    const id         = 'msg-' + crypto.randomUUID();
+    const alias      = randomAlias();
+    const created_at = Date.now();
 
-  const messages = readDB();
-  messages.unshift(message);
-  writeDB(messages);
+    await pool.query(
+      'INSERT INTO messages (id, text, category, alias, created_at, is_auto) VALUES ($1,$2,$3,$4,$5,$6)',
+      [id, text.trim().slice(0, 500), category, alias, created_at, false]
+    );
 
-  const { id, alias, created_at } = message;
-  res.status(201).json({ id, alias, created_at });
+    res.status(201).json({ id, alias, created_at });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Could not save message.' });
+  }
 });
 
-// ─── Cron: inject daily at midnight ──────────────────────────────────────────
+// ─── Cron: midnight daily injection ──────────────────────────────────────────
 cron.schedule('0 0 * * *', injectDailyMessages);
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
-seedIfEmpty();
-injectDailyMessages();
+async function start() {
+  await initDB();
+  await seedIfEmpty();
+  await injectDailyMessages();
+  app.listen(PORT, () => {
+    console.log(`🔥 Digital Campfire → http://localhost:${PORT}`);
+  });
+}
 
-app.listen(PORT, () => {
-  console.log(`🔥 Digital Campfire server → http://localhost:${PORT}`);
-});
+start().catch(err => { console.error('Startup error:', err); process.exit(1); });
