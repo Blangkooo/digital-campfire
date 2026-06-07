@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Digital Campfire — Gather Around</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Stars canvas -->
+  <canvas id="stars-canvas"></canvas>
+
+  <!-- Floating embers -->
+  <div id="embers-container"></div>
+
+  <!-- ══════════════════════════════════════
+       HEADER / HERO
+  ══════════════════════════════════════ -->
+  <header class="hero">
+    <div class="hero-inner">
+      <p class="hero-eyebrow">gather around</p>
+      <h1 class="hero-title">Digital Campfire</h1>
+      <p class="hero-subtitle">A cozy corner of the internet where strangers share stories,<br>confess secrets, dream out loud, and feel a little less alone.</p>
+    </div>
+
+    <!-- Daily Question -->
+    <div class="daily-question-wrap glass reveal">
+      <span class="dq-label">Tonight's Question</span>
+      <p id="daily-question" class="dq-text"></p>
+      <button class="btn-ghost dq-refresh" id="btn-new-question" title="New question">&#8635; new question</button>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════
+       CAMPFIRE SVG CENTERPIECE
+  ══════════════════════════════════════ -->
+  <section class="campfire-section">
+    <div class="campfire-scene">
+
+      <!-- Ground glow (behind everything) -->
+      <div class="ground-glow"></div>
+
+      <!-- Logs -->
+      <svg class="logs" viewBox="0 0 340 70" xmlns="http://www.w3.org/2000/svg">
+        <!-- shadow under logs -->
+        <ellipse cx="170" cy="62" rx="155" ry="11" fill="#0a0400" opacity="0.8"/>
+        <!-- back log -->
+        <rect x="10" y="30" width="320" height="22" rx="11" fill="#2A1005" transform="rotate(-5 170 41)"/>
+        <!-- left log -->
+        <rect x="15" y="34" width="290" height="20" rx="10" fill="#4A2208" transform="rotate(7 170 44)"/>
+        <!-- right log -->
+        <rect x="25" y="36" width="290" height="20" rx="10" fill="#5C2F0C" transform="rotate(-7 170 46)"/>
+        <!-- center log -->
+        <rect x="60" y="40" width="220" height="18" rx="9" fill="#6B3510"/>
+        <!-- bark details -->
+        <rect x="70" y="42" width="30" height="4" rx="2" fill="#3B1A07" opacity="0.6"/>
+        <rect x="150" y="43" width="40" height="3" rx="2" fill="#3B1A07" opacity="0.5"/>
+        <rect x="240" y="41" width="25" height="4" rx="2" fill="#3B1A07" opacity="0.6"/>
+        <!-- ember glow on logs -->
+        <ellipse cx="170" cy="48" rx="70" ry="8" fill="#FF4500" opacity="0.18"/>
+        <ellipse cx="170" cy="46" rx="40" ry="5" fill="#FF8A00" opacity="0.22"/>
+      </svg>
+
+      <!-- Fire layers -->
+      <div class="fire-wrap">
+        <!-- outer haze -->
+        <div class="fire fire-0"></div>
+        <!-- main body -->
+        <div class="fire fire-1"></div>
+        <div class="fire fire-2"></div>
+        <!-- inner bright -->
+        <div class="fire fire-3"></div>
+        <div class="fire fire-4"></div>
+        <!-- white-hot core -->
+        <div class="fire-core"></div>
+        <div class="fire-core fire-core-2"></div>
+        <!-- inner glow ring -->
+        <div class="fire-glow"></div>
+      </div>
+
+      <!-- Rising sparks from the fire -->
+      <div class="fire-sparks" id="fire-sparks"></div>
+    </div>
+
+    <!-- Hear a Story button -->
+    <button class="btn-primary btn-story" id="btn-random">
+      <span class="btn-icon">🔥</span> Hear a Story
+    </button>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       SHARE A THOUGHT
+  ══════════════════════════════════════ -->
+  <section class="section reveal" id="section-share">
+    <div class="container">
+      <h2 class="section-title">Share a Thought</h2>
+      <p class="section-sub">Toss something into the fire. It will drift out as a spark for others to find.</p>
+
+      <form id="share-form" class="glass share-form" novalidate>
+        <div class="form-group">
+          <label for="msg-category">Category</label>
+          <div class="select-wrap">
+            <select id="msg-category" required>
+              <option value="" disabled selected>Choose a category…</option>
+              <option value="Advice">💡 Advice</option>
+              <option value="Confession">🤫 Confession</option>
+              <option value="Dream">🌙 Dream</option>
+              <option value="Memory">📸 Memory</option>
+              <option value="Story">📖 Story</option>
+              <option value="Gratitude">🙏 Gratitude</option>
+              <option value="Random Thought">✨ Random Thought</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="msg-text">Your Message</label>
+          <textarea
+            id="msg-text"
+            rows="5"
+            maxlength="500"
+            placeholder="What's on your mind? Share a story, a dream, a memory…"
+            required
+          ></textarea>
+          <span class="char-count"><span id="char-num">0</span> / 500</span>
+        </div>
+
+        <div class="form-group">
+          <label for="msg-name">Nickname <span class="optional">(optional)</span></label>
+          <input
+            type="text"
+            id="msg-name"
+            maxlength="30"
+            placeholder="Anonymous"
+          />
+        </div>
+
+        <button type="submit" class="btn-primary btn-full">
+          <span class="btn-icon">🔥</span> Toss into the Fire
+        </button>
+
+        <p class="form-note">Posts are stored locally in your browser.</p>
+      </form>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       SPARK GALLERY
+  ══════════════════════════════════════ -->
+  <section class="section reveal" id="section-gallery">
+    <div class="container">
+      <h2 class="section-title">Spark Gallery</h2>
+      <p class="section-sub">Every spark is someone's thought drifting through the night.</p>
+
+      <!-- Controls -->
+      <div class="gallery-controls glass">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search-input" placeholder="Search sparks…" />
+        </div>
+
+        <div class="filter-chips" id="filter-chips">
+          <button class="chip active" data-filter="All">All</button>
+          <button class="chip" data-filter="Advice">💡 Advice</button>
+          <button class="chip" data-filter="Confession">🤫 Confession</button>
+          <button class="chip" data-filter="Dream">🌙 Dream</button>
+          <button class="chip" data-filter="Memory">📸 Memory</button>
+          <button class="chip" data-filter="Story">📖 Story</button>
+          <button class="chip" data-filter="Gratitude">🙏 Gratitude</button>
+          <button class="chip" data-filter="Random Thought">✨ Random</button>
+        </div>
+      </div>
+
+      <!-- Gallery grid -->
+      <div class="spark-grid" id="spark-grid">
+        <!-- Populated by JS -->
+      </div>
+
+      <p class="empty-state" id="empty-state" hidden>
+        No sparks found. Be the first to share a thought! 🔥
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       FAVORITES
+  ══════════════════════════════════════ -->
+  <section class="section reveal" id="section-favorites">
+    <div class="container">
+      <h2 class="section-title">Your Favorites</h2>
+      <p class="section-sub">Sparks you've kept close to the warmth.</p>
+      <div class="spark-grid" id="favorites-grid"></div>
+      <p class="empty-state" id="fav-empty-state" hidden>
+        You haven't favorited any sparks yet. Click the ♥ on any message to save it here.
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════
+       MODAL
+  ══════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title" hidden>
+    <div class="modal glass">
+      <button class="modal-close" id="modal-close" aria-label="Close">&times;</button>
+
+      <div class="modal-header">
+        <span class="modal-category" id="modal-category"></span>
+        <button class="fav-btn" id="modal-fav" title="Favorite this spark">♥</button>
+      </div>
+
+      <p class="modal-message" id="modal-message"></p>
+
+      <div class="modal-footer">
+        <span class="modal-author" id="modal-author"></span>
+        <span class="modal-time" id="modal-time"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       RANDOM STORY OVERLAY
+  ══════════════════════════════════════ -->
+  <div class="modal-overlay story-overlay" id="story-overlay" role="dialog" aria-modal="true" hidden>
+    <div class="modal story-modal glass">
+      <button class="modal-close" id="story-close" aria-label="Close">&times;</button>
+      <p class="story-eyebrow">A spark drifts your way…</p>
+      <div class="modal-header">
+        <span class="modal-category" id="story-category"></span>
+        <button class="fav-btn" id="story-fav" title="Favorite this spark">♥</button>
+      </div>
+      <p class="modal-message story-message" id="story-message"></p>
+      <div class="modal-footer">
+        <span class="modal-author" id="story-author"></span>
+        <span class="modal-time" id="story-time"></span>
+      </div>
+      <button class="btn-primary btn-another" id="btn-another">Another spark 🔥</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       TOAST
+  ══════════════════════════════════════ -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- ══════════════════════════════════════
+       FOOTER
+  ══════════════════════════════════════ -->
+  <footer class="footer">
+    <div class="footer-fire">🔥</div>
+    <p>Digital Campfire &mdash; stay a while, you belong here.</p>
+    <p class="footer-note">All thoughts are stored only in your browser.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
