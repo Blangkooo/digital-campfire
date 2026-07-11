@@ -30,16 +30,7 @@ const DAILY_QUESTIONS = [
   "What does home mean to you?",
 ];
 
-// ─── Category emoji map ──────────────────────────────────────────────────────
-const CAT_EMOJI = {
-  'Advice': '💡',
-  'Confession': '🤫',
-  'Dream': '🌙',
-  'Memory': '📸',
-  'Story': '📖',
-  'Gratitude': '🙏',
-  'Random Thought': '✨',
-};
+// Category emoji removed — badges show text only (minimal icon style)
 
 // ─── Favorites (local only — user preference) ─────────────────────────────────
 const LS_KEY_FAVORITES = 'dc_favorites';
@@ -190,6 +181,7 @@ function createEmber(container) {
 function setupFireSparks() {
   const container = document.getElementById('fire-sparks');
   if (!container) return;
+  container.innerHTML = ''; // clear any statically-accumulated elements from previous sessions
 
   function spawn() {
     const spark   = document.createElement('div');
@@ -278,7 +270,7 @@ function setupForm() {
       showToast('Could not save your spark — please try again.');
     } finally {
       submitBtn.disabled = false;
-      submitBtn.innerHTML = '<span class="btn-icon">🔥</span> Toss into the Fire';
+      submitBtn.innerHTML = 'Toss into the Fire <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>';
     }
   });
 }
@@ -357,10 +349,13 @@ function buildCard(msg, index) {
   card.style.animationDelay = `${index * 0.06}s`;
   card.dataset.id = msg.id;
 
+  const heartFill = isFav ? 'currentColor' : 'none';
   card.innerHTML = `
     <div class="spark-card-header">
-      <span class="category-badge">${CAT_EMOJI[msg.category] || '✦'} ${escHtml(msg.category)}</span>
-      <button class="card-fav-btn ${isFav ? 'active' : ''}" data-id="${msg.id}" title="${isFav ? 'Remove favorite' : 'Add to favorites'}">♥</button>
+      <span class="category-badge">${escHtml(msg.category)}</span>
+      <button class="card-fav-btn ${isFav ? 'active' : ''}" data-id="${msg.id}" aria-label="${isFav ? 'Remove from favorites' : 'Add to favorites'}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="${heartFill}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
+      </button>
     </div>
     <p class="spark-text">${escHtml(msg.text)}</p>
     <div class="spark-meta">
@@ -380,14 +375,15 @@ function openModal(id) {
   if (!msg) return;
   currentOpenId = id;
 
-  document.getElementById('modal-category').textContent = `${CAT_EMOJI[msg.category] || '✦'} ${msg.category}`;
+  document.getElementById('modal-category').textContent = msg.category;
   document.getElementById('modal-message').textContent  = msg.text;
   document.getElementById('modal-author').textContent   = `~ ${msg.author}`;
   document.getElementById('modal-time').textContent     = formatDate(msg.ts);
 
+  const isFavM = favorites.has(id);
   const favBtn = document.getElementById('modal-fav');
-  favBtn.textContent = favorites.has(id) ? '♥ Favorited' : '♥ Favorite';
-  favBtn.classList.toggle('active', favorites.has(id));
+  favBtn.querySelector('.fav-label').textContent = isFavM ? 'Favorited' : 'Favorite';
+  favBtn.classList.toggle('active', isFavM);
 
   document.getElementById('modal-overlay').hidden = false;
   document.body.style.overflow = 'hidden';
@@ -405,14 +401,15 @@ function showRandomStory() {
   const msg = messages[Math.floor(Math.random() * messages.length)];
   currentOpenId = msg.id;
 
-  document.getElementById('story-category').textContent = `${CAT_EMOJI[msg.category] || '✦'} ${msg.category}`;
+  document.getElementById('story-category').textContent = msg.category;
   document.getElementById('story-message').textContent  = msg.text;
   document.getElementById('story-author').textContent   = `~ ${msg.author}`;
   document.getElementById('story-time').textContent     = formatDate(msg.ts);
 
+  const isFavS = favorites.has(msg.id);
   const favBtn = document.getElementById('story-fav');
-  favBtn.textContent = favorites.has(msg.id) ? '♥ Favorited' : '♥ Favorite';
-  favBtn.classList.toggle('active', favorites.has(msg.id));
+  favBtn.querySelector('.fav-label').textContent = isFavS ? 'Favorited' : 'Favorite';
+  favBtn.classList.toggle('active', isFavS);
 
   document.getElementById('story-overlay').hidden = false;
   document.body.style.overflow = 'hidden';
@@ -440,8 +437,8 @@ function toggleFavFromModal(id) {
   const label = isFav ? '♥ Favorited' : '♥ Favorite';
   const mf = document.getElementById('modal-fav');
   const sf = document.getElementById('story-fav');
-  if (mf) { mf.textContent = label; mf.classList.toggle('active', isFav); }
-  if (sf) { sf.textContent = label; sf.classList.toggle('active', isFav); }
+  if (mf) { const s = mf.querySelector('.fav-label'); if (s) s.textContent = label; mf.classList.toggle('active', isFav); }
+  if (sf) { const s = sf.querySelector('.fav-label'); if (s) s.textContent = label; sf.classList.toggle('active', isFav); }
 }
 
 // ─── Scroll reveal ────────────────────────────────────────────────────────────

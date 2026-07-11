@@ -115,18 +115,19 @@ input, textarea, select { font-family: inherit; }
 }
 
 /* ── Ember particles ─────────────────────────────────────── */
+/* NOT infinite — animationend fires once → JS removes & recreates */
 @keyframes emberFloat {
   0%   { transform: translateY(0) translateX(0) scale(1); opacity: .7; }
-  50%  { transform: translateY(-45vh) translateX(20px) scale(.7); opacity: .4; }
-  100% { transform: translateY(-90vh) translateX(-10px) scale(.3); opacity: 0; }
+  55%  { opacity: .4; }
+  100% { transform: translateY(-88vh) translateX(var(--drift, 30px)) scale(.25); opacity: 0; }
 }
 .ember {
   position: absolute;
-  bottom: 0;
-  width: 3px; height: 3px;
   border-radius: 50%;
   background: radial-gradient(circle, #fff 0%, var(--accent) 60%, transparent 100%);
-  animation: emberFloat linear infinite;
+  animation-name: emberFloat;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
   pointer-events: none;
 }
 
@@ -467,17 +468,19 @@ input, textarea, select { font-family: inherit; }
   z-index: 5;
   overflow: visible;
 }
-.spark-particle {
-  position: absolute;
-  width: 3px; height: 3px;
+
+/* .fspark is what the JS actually creates — MUST be position:absolute */
+.fspark {
+  position: absolute;   /* makes bottom/left inline styles take effect */
   border-radius: 50%;
-  background: radial-gradient(circle, #fff 0%, var(--amber) 60%, transparent 100%);
   pointer-events: none;
-  animation: sparkRise 1.2s ease-out forwards;
+  animation-name: fsparkRise;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
 }
-@keyframes sparkRise {
+@keyframes fsparkRise {
   0%   { transform: translateY(0) translateX(0) scale(1); opacity: 1; }
-  100% { transform: translateY(-240px) translateX(var(--drift,24px)) scale(.15); opacity: 0; }
+  100% { transform: translateY(var(--fy, -160px)) translateX(var(--fx, 20px)) scale(.12); opacity: 0; }
 }
 
 /* Flicker animations — each layer gets its own phase */
