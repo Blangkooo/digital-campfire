@@ -1,6 +1,6 @@
 'use strict';
 
-const { getMessages, addMessage, seedIfEmpty } = require('../lib/db');
+const { getMessages, addMessage, dailyReset } = require('../lib/db');
 
 const VALID_CATEGORIES = ['Advice','Confession','Dream','Memory','Story','Gratitude','Random Thought'];
 
@@ -12,7 +12,7 @@ module.exports = async (req, res) => {
 
   try {
     if (req.method === 'GET') {
-      await seedIfEmpty();
+      await dailyReset(); // no-op if already run today; seeds on first hit of a new day
       const messages = await getMessages();
       return res.status(200).json(messages);
     }

@@ -121,53 +121,28 @@ const AUTO_POOL = [
   { text: "Every song was written by someone who needed to say something they couldn't say out loud.",                          category: "Random Thought" },
 ];
 
-const SEEDS = [
-  { text: "My grandmother used to say every sunset is a reminder that endings can be beautiful. I didn't understand until the year she left.", category: "Memory" },
-  { text: "Advice from forty years of living: let people be wrong about you. Your peace is worth more than their accuracy.",                   category: "Advice" },
-  { text: "I confess I still sleep with a stuffed animal. It's the one thing from my childhood I refused to outgrow.",                        category: "Confession" },
-  { text: "I dream of a small house by the sea where no one knows my name — I wake to waves and go to sleep with stars.",                     category: "Dream" },
-  { text: "I'm grateful for the 3am silence — that hour when the world stops pretending and lets you just exist.",                            category: "Gratitude" },
-  { text: "There was a summer I spent entirely wrong — every bad decision — and it became the story I'm most proud to tell.",                 category: "Story" },
-  { text: "Clouds are just the sky's way of practicing shapes it never commits to. I respect that.",                                          category: "Random Thought" },
-];
-
-// ─── Seed on first run ────────────────────────────────────────────────────────
-async function seedIfEmpty() {
-  const { rows } = await pool.query('SELECT COUNT(*) AS n FROM messages');
-  if (parseInt(rows[0].n) > 0) return;
-
-  const now = Date.now();
-  for (let i = 0; i < SEEDS.length; i++) {
-    const s = SEEDS[i];
-    await pool.query(
-      'INSERT INTO messages (id, text, category, alias, created_at, is_auto) VALUES ($1,$2,$3,$4,$5,$6)',
-      ['seed-' + crypto.randomUUID(), s.text, s.category, randomAlias(), now - (SEEDS.length - i) * 60000000, true]
-    );
-  }
-  console.log('Seeded initial messages.');
-}
-
-// ─── Daily injection ──────────────────────────────────────────────────────────
-async function injectDailyMessages() {
+// ─── Daily reset: clears all messages, injects 5 fresh ones ──────────────────
+async function dailyReset() {
   const today = new Date().toISOString().slice(0, 10);
   const { rows: logged } = await pool.query('SELECT date FROM daily_log WHERE date = $1', [today]);
-  if (logged.length > 0) return;
+  if (logged.length > 0) return 0;
 
-  const { rows: used } = await pool.query('SELECT text FROM messages WHERE is_auto = TRUE');
-  const usedTexts = new Set(used.map(r => r.text));
-  const available = AUTO_POOL.filter(m => !usedTexts.has(m.text));
-  const picks     = available.sort(() => Math.random() - 0.5).slice(0, 3);
-  const now       = Date.now();
+  await pool.query('DELETE FROM messages');
 
-  for (const pick of picks) {
+  const picks = AUTO_POOL.slice().sort(() => Math.random() - 0.5).slice(0, 5);
+  const now   = Date.now();
+
+  for (let i = 0; i < picks.length; i++) {
+    const pick = picks[i];
     await pool.query(
       'INSERT INTO messages (id, text, category, alias, created_at, is_auto) VALUES ($1,$2,$3,$4,$5,$6)',
-      ['auto-' + crypto.randomUUID(), pick.text, pick.category, randomAlias(), now, true]
+      ['auto-' + crypto.randomUUID(), pick.text, pick.category, randomAlias(), now - (picks.length - i) * 120000, true]
     );
   }
 
   await pool.query('INSERT INTO daily_log (date) VALUES ($1) ON CONFLICT DO NOTHING', [today]);
-  console.log(`[${today}] Injected ${picks.length} daily messages.`);
+  console.log(`[${today}] Daily reset: injected ${picks.length} messages.`);
+  return picks.length;
 }
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
@@ -215,14 +190,13 @@ app.post('/api/messages', async (req, res) => {
   }
 });
 
-// ─── Cron: midnight daily injection ──────────────────────────────────────────
-cron.schedule('0 0 * * *', injectDailyMessages);
+// ─── Cron: midnight reset ─────────────────────────────────────────────────────
+cron.schedule('0 0 * * *', dailyReset);
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 async function start() {
   await initDB();
-  await seedIfEmpty();
-  await injectDailyMessages();
+  await dailyReset();
   app.listen(PORT, () => {
     console.log(`🔥 Digital Campfire → http://localhost:${PORT}`);
   });

@@ -19,18 +19,6 @@
   <canvas id="stars-canvas" aria-hidden="true"></canvas>
   <div id="embers-container" aria-hidden="true"></div>
 
-  <!-- Skip nav -->
-  <a href="#section-gallery" class="skip-link">Skip to gallery</a>
-
-  <!-- ── NAVIGATION ──────────────────────────────── -->
-  <nav class="nav-pill" aria-label="Page navigation">
-    <a href="#section-gallery" class="nav-link">Gallery</a>
-    <span class="nav-sep" aria-hidden="true"></span>
-    <a href="#section-share" class="nav-link">Share</a>
-    <span class="nav-sep" aria-hidden="true"></span>
-    <a href="#section-favorites" class="nav-link">Favorites</a>
-  </nav>
-
   <!-- ── HERO ───────────────────────────────────── -->
   <header class="hero" role="banner">
     <div class="hero-orb hero-orb-1" aria-hidden="true"></div>
@@ -52,9 +40,6 @@
       </div>
     </div>
 
-    <div class="hero-scroll" aria-hidden="true">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
-    </div>
   </header>
 
   <!-- ── CAMPFIRE ────────────────────────────────── -->
@@ -76,17 +61,23 @@
         <ellipse cx="170" cy="46" rx="40" ry="5" fill="#FF8A00" opacity="0.22"/>
       </svg>
 
-      <div class="fire-wrap" aria-hidden="true">
-        <div class="fire fire-0"></div>
-        <div class="fire fire-1"></div>
-        <div class="fire fire-2"></div>
-        <div class="fire fire-3"></div>
-        <div class="fire fire-4"></div>
-        <div class="fire-core"></div>
-        <div class="fire-core fire-core-2"></div>
-        <div class="fire-glow"></div>
+      <!-- Atmospheric glow (outside clip so it blooms freely) -->
+      <div class="fire-glow" aria-hidden="true"></div>
+
+      <!-- Clipping wrapper keeps fire inside bounds -->
+      <div class="fire-clip" aria-hidden="true">
+        <div class="fire-wrap">
+          <div class="fire fire-0"></div>
+          <div class="fire fire-1"></div>
+          <div class="fire fire-2"></div>
+          <div class="fire fire-3"></div>
+          <div class="fire fire-4"></div>
+          <div class="fire-core"></div>
+          <div class="fire-core fire-core-2"></div>
+        </div>
       </div>
 
+      <!-- Sparks float upward freely above the scene -->
       <div class="fire-sparks" id="fire-sparks" aria-hidden="true"></div>
     </div>
 
@@ -100,7 +91,7 @@
   <section class="daily-section reveal" aria-labelledby="dq-label">
     <div class="container">
       <div class="daily-card">
-        <span class="dq-label" id="dq-label">Tonight's Question</span>
+        <span class="dq-label" id="dq-label">Today's Question</span>
         <p id="daily-question" class="dq-text"></p>
         <button class="btn-refresh" id="btn-new-question" aria-label="Show a different question">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
